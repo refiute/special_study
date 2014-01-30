@@ -1,10 +1,6 @@
-#include <iostream>
-#include <vector>
 #include <map>
-#include <cmath>
 #include <boost/dynamic_bitset.hpp>
 #include "common_part.h"
-using namespace std;
 
 typedef pair<int, boost::dynamic_bitset<> > P;
 
@@ -53,7 +49,9 @@ void print_course(){
 
 int main(){
 	input();
+	time_t start = time(NULL);
 	boost::dynamic_bitset<> bs(points.size());
 	cout << solve(0, bs) << endl;
 	print_course();
+	cout << time(NULL) - start << "s" << endl;
 }
