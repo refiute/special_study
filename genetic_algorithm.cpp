@@ -2,8 +2,8 @@
 #include "common_part.h"
 
 boost::random::mt19937 gen;
-int population_size, crossover_size, mutate_probability, elite_selection, generation = 1;
-double best_fitness = 1e9;
+int population_size, crossover_size, mutate_probability, elite_selection, generation = 1, time_limit;
+double best_fitness = -1;
 time_t start;
 
 class Gene{
@@ -11,14 +11,14 @@ public:
 	vector<int> chromosome;
 	double fitness;
 
-	Gene(int l){
+	Gene(int l = 0){
 		fitness = 0;
 		for(int i = 1; i < l; i++) chromosome.push_back(i);
 		random_shuffle(chromosome.begin(), chromosome.end());
 	}
 
 	bool operator<(const Gene g)const{
-		return this->fitness < g.fitness;
+		return this->fitness > g.fitness;
 	}
 
 	// 突然変異
@@ -47,19 +47,23 @@ public:
 };
 
 vector<Gene> population;
+Gene best;
 
 void init_population(){
-	cout << "Population Size: ";
 	cin >> population_size;
+	cout << "Population Size: " << population_size << endl;
 	
-	cout << "Crossover size: ";
 	cin >> crossover_size;
+	cout << "Crossover size: " << crossover_size << endl;
 
-	cout << "Mutate probability: ";
 	cin >> mutate_probability;
+	cout << "Mutate probability: " << mutate_probability << endl;
 
-	cout << "Elite selection: ";
 	cin >> elite_selection;
+	cout << "Elite selection: " << elite_selection << endl;
+
+	cin >> time_limit;
+	cout << "Time Limit: " << time_limit << endl;
 
 	for(int i = 0; i < population_size; i++)
 		population.push_back(Gene(point_num));
@@ -72,7 +76,7 @@ void evaluate_gene(Gene* g){
 		dist += distance(points[g->chromosome[i]], points[g->chromosome[i+1]]);
 	}
 	dist += distance(points[g->chromosome[g->chromosome.size()-1]], points[0]);
-	g->fitness = dist;
+	g->fitness = 1e8 / dist;
 }
 
 // 世代評価
@@ -82,29 +86,29 @@ void evaluate_population(){
 
 	sort(population.begin(), population.end());
 
-	if(best_fitness > population[0].fitness){
+	if(best_fitness < population[0].fitness){
 		best_fitness = population[0].fitness;
-		cout << "result: generation=" << generation << " fitness=" << best_fitness << " " << time(NULL)-start << "s" << endl;
+		best = population[0];
+		cout << "result: generation=" << generation << " distance=" << 1e8/best_fitness << " " << time(NULL)-start << "s" << endl;
 		cout << '\a';
-		population[0].print_route();
 	}
 }
 
 void order_crossover(vector<Gene>* population, vector<int> a, vector<int> b){
 	boost::random::uniform_int_distribution<> dist(0, a.size()-1);
 	int pos = dist(gen);
-	Gene anew(point_num), bnew(point_num);
-	for(int i = 0; i < pos; i++)anew.chromosome[i] = b[i];
-	for(int i = pos; i < b.size(); i++){
+	Gene anew, bnew;
+	for(int i = 0; i < pos; i++)anew.chromosome.push_back(a[i]);
+	for(int i = 0; i < b.size(); i++){
 		bool flag = true;
-		for(int j = 0; j < pos; j++) flag = !(b[i] == b[j]);
-		if(flag) anew.chromosome[i] = b[i];
+		for(int j = 0; j < pos; j++) flag &= !(b[i] == a[j]);
+		if(flag) anew.chromosome.push_back(b[i]);
 	}
-	for(int i = 0; i < pos; i++)bnew.chromosome[i] = a[i];
-	for(int i = pos; i < a.size(); i++){
+	for(int i = 0; i < pos; i++)bnew.chromosome.push_back(b[i]);
+	for(int i = 0; i < a.size(); i++){
 		bool flag = true;
-		for(int j = 0; j < pos; j++) flag = !(a[i] == a[j]);
-		if(flag) bnew.chromosome[i] = a[i];
+		for(int j = 0; j < pos; j++) flag &= !(a[i] == b[j]);
+		if(flag) bnew.chromosome.push_back(a[i]);
 	}
 	population->push_back(anew);
 	population->push_back(bnew);
@@ -158,8 +162,8 @@ int main(){
 	start = (unsigned)time(NULL);
 	evaluate_population();
 	while(true){
-		if(generation % 10000 == 0)cout << "generation: " << generation << endl;
-		if(time(NULL)-start > 300)break;
+		if(generation % 10000 == 0)cout << "generation: " << generation  << " " << time(NULL)-start << "s" << endl;
+		if(time(NULL)-start >= time_limit)break;
 		crossover_population();
 		mutate_population(mutate_probability);
 		evaluate_population();
@@ -167,4 +171,6 @@ int main(){
 
 		generation++;
 	}
+	cout << "generation: " << generation  << " Finish!" << endl;
+	best.print_route();
 }
